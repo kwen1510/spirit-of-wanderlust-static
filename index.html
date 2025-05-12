@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Leader Dashboard (Offline)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        /* --- Copy CSS from leader.html here --- */
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7f7f7; color: #222; }
+        .container { height: 100vh; width: 100vw; max-width: 100%; max-height: 100%; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; background: #f7f7f7; padding: 0.7em 2em; border-bottom: 1px solid #e0e0e0; flex: 0 0 60px; box-sizing: border-box; }
+        .timers { display: flex; align-items: center; gap: 2em; font-size: 1.2em; }
+        #start-game-btn { padding: 0.5em 1.2em; font-size: 1.1em; margin-left: 1em; }
+        .main-area { flex: 1 1 auto; display: grid; grid-template-columns: 1.2fr 2.6fr 1.6fr; width: 100%; overflow: hidden; box-sizing: border-box; background: #f7f7f7; }
+        .left-panel, .right-panel { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .left-panel { display: flex; flex-direction: column; padding: 2em 1em 1em; background: #f7f7f7; border-right: 1px solid #e0e0e0; min-width: 240px; max-width: 340px; gap: 1.2em; box-sizing: border-box; }
+        .right-panel { display: flex; flex-direction: column; padding: 2em 1.5em 1em; background: #f7f7f7; border-left: 1px solid #e0e0e0; min-width: 320px; box-sizing: border-box; }
+        .log-box { flex: 1 1 0; overflow-y: auto; min-height: 0; background: #f3f3f3; border: 1.5px solid #e0e0e0; border-radius: 18px; padding: 1.5em 1.5em; font-size: 0.95em; box-shadow: 0 2px 12px #0001; display: flex; flex-direction: column; }
+        .reflection-box { width: 100%; display: flex; flex-direction: column; }
+        #reflection-area { border-radius: 12px; border: 1.5px solid #e0e0e0; background: #fff; font-size: 1em; padding: 1em 1.2em; margin-bottom: 1em; resize: none; width: 100%; box-sizing: border-box; }
+        .center-panel { display: flex; align-items: center; justify-content: center; overflow: auto; height: 100%; width: 100%; }
+        .grid { display: grid; gap: 8px; background: #fff; box-shadow: 2px 2px 12px rgba(0,0,0,0.10); grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); align-content: center; justify-content: center; padding: 24px; border-radius: 18px; width:  clamp(320px, 60vmin, 700px); height: clamp(320px, 60vmin, 700px); box-sizing: border-box; }
+        .cell { position: relative; aspect-ratio: 1; border-radius: 12px !important; border: 2px solid #e0e0e0 !important; background: #f3f3f3 !important; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, border 0.2s; font-size: 2.2em; }
+        .cell.visited { background: #f7f7f7 !important; color: #bbb; cursor: default; }
+        .cell:hover:not(.visited) { background: #e8f8ff; }
+        .cell.current { border: 3px solid #222 !important; background: #e0e0e0 !important; }
+        .role-box, .objective-box, .inventory-box { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 18px; box-shadow: 0 2px 8px #0001; padding: 1.1em 1.2em; width: 100%; box-sizing: border-box; font-size: 1.15em; display: flex; flex-direction: column; justify-content: center; }
+        .role-box { font-size: 1.25em; font-weight: bold; background: #f7f7f7; }
+        .objective-box { background: #f3f3f3; }
+        .inventory-box { background: #f7f7f7; }
+        .inventory-box h2 { margin: 0 0 0.5em 0; font-size: 1.2em; font-weight: bold; }
+        #inventory-list { list-style: none; padding: 0; margin: 0; }
+        #inventory-list li { margin-bottom: 0.4em; font-size: 1.08em; }
+        #start-game-btn, .log-card button, .modal button, #submit-reflection { background: #e0e0e0; color: #222; border: none; border-radius: 18px; font-size: 1.1em; font-weight: 600; padding: 0.7em 2em; margin: 0.5em 0; box-shadow: 0 1px 4px #0001; cursor: pointer; transition: background 0.2s, color 0.2s; }
+        #start-game-btn:disabled, #submit-reflection:disabled { background: #f3f3f3; color: #aaa; cursor: not-allowed; }
+        .log-bubble { border-radius: 14px; margin: 0.6em 0; padding: 1em 1.2em; font-size: 0.95em; word-break: break-word; box-shadow: 0 1px 4px #0001; border-left: 5px solid #e0e0e0; background: #fff; transition: background 0.2s; }
+        .log-bubble.log-system       { background: #eafaf1; border-left-color: #b2dfc7; color: #333; }
+        .log-bubble.log-reflection   { background: #eaf7ff; border-left-color: #4a90e2; color: #1a3a5a; }
+        .log-bubble.log-user         { background: #f9fbe7; border-left-color: #cddc39; color: #666600; }
+        .log-bubble.log-elder        { background: #ede7f6; border-left-color: #7e57c2; color: #4527a0; font-size: 1.05em; font-weight: 600; }
+        .log-bubble.log-inject-story { background: #fffbe6; border-left-color: #ffb300; color: #7c5a00; }
+        .modal-bg { 
+            position: fixed; 
+            left: 0; 
+            top: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: rgba(0,0,0,0.5); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 1000; 
+            backdrop-filter: blur(3px);
+        }
+        .modal-content { 
+            background: #fff; 
+            padding: 3em 3.5em; 
+            border-radius: 20px; 
+            box-shadow: 0 4px 30px rgba(0,0,0,0.2); 
+            text-align: center; 
+            min-width: 320px; 
+            max-width: 90%;
+            border: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-content h2 { 
+            margin: 0 0 1.2em 0; 
+            font-size: 1.8em;
+            color: #333;
+            font-weight: 600;
+        }
+        .modal-content input, .modal-content select { 
+            font-size: 1.1em; 
+            padding: 0.8em 1.2em; 
+            margin: 0.5em 0 1.2em; 
+            border-radius: 12px; 
+            border: 1.5px solid #ddd; 
+            width: 100%; 
+            box-sizing: border-box;
+            background: #f8f8f8;
+            transition: all 0.2s ease;
+        }
+        .modal-content input:focus, .modal-content select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+            background: #fff;
+        }
+        .modal-content label { 
+            display: block; 
+            margin-top: 0.8em; 
+            font-weight: 600; 
+            text-align: left;
+            color: #555;
+            margin-bottom: 0.3em;
+            font-size: 1.05em;
+        }
+        .modal-content button { 
+            margin-top: 2em;
+            padding: 0.9em 2.5em;
+            background: #4a90e2;
+            color: white;
+            font-weight: 600;
+            border-radius: 14px;
+            border: none;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.3);
+        }
+        .modal-content button:hover {
+            background: #3a80d2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+        }
+        .modal-content button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(74, 144, 226, 0.4);
+        }
+        @media (max-width: 900px) { .main-area { grid-template-columns: 1fr; grid-template-rows: auto auto auto; } .left-panel, .right-panel { min-width: 0; } }
+        .modal-ok-btn {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            border: 2.5px solid #222 !important;
+            border-radius: 18px !important;
+            font-size: 1.3em !important;
+            font-weight: 700 !important;
+            padding: 0.7em 2.5em !important;
+            box-shadow: 0 2px 12px #0001, 0 0.5px 8px #e0e0e0;
+            cursor: pointer;
+            outline: none;
+            margin: 0.5em 0;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+        .modal-ok-btn:hover, .modal-ok-btn:focus {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 4px 18px #0002;
+            transform: translateY(-1px);
+        }
+        .modal-ok-btn:active {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 1px 4px #0001;
+            transform: translateY(0);
+        }
+        #start-session-btn {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            border: 2.5px solid #222 !important;
+            border-radius: 18px !important;
+            font-size: 1.3em !important;
+            font-weight: 700 !important;
+            padding: 0.7em 2.5em !important;
+            box-shadow: 0 2px 12px #0001, 0 0.5px 8px #e0e0e0;
+            cursor: pointer;
+            outline: none;
+            margin: 0.5em 0;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+        #start-session-btn:hover, #start-session-btn:focus {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 4px 18px #0002;
+            transform: translateY(-1px);
+        }
+        #start-session-btn:active {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 1px 4px #0001;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Session/Team Selection Modal -->
+    <div id="session-modal" class="modal-bg">
+      <div class="modal-content">
+        <h2>Raffles Parable</h2>
+        <label for="day-select">Day</label>
+        <select id="day-select"></select>
+        <label for="group-select">Group</label>
+        <select id="group-select"></select>
+        <label for="team-name">Team Name</label>
+        <input type="text" id="team-name" maxlength="32" placeholder="Enter your team name" />
+        <button id="start-session-btn">Start Session</button>
+      </div>
+    </div>
+    <div id="intro-modal" class="modal-bg" style="display:none;">
+      <div class="modal-content" style="max-height:70vh;overflow-y:auto;">
+        <h2>Prologue</h2>
+        <div id="intro-modal-text" style="font-size:1.15em;text-align:left;line-height:1.5;max-height:45vh;overflow-y:auto;margin-bottom:2em;">
+Hear me, young leaders of five proud tribes—yet only four now stand upon this sand.<br><br>
+Divide the burden, share the risk. When one of you falters, three must lift. When doubt darkens one heart, the other hearts must blaze brighter. For the sea shows no mercy to the lone or the proud, and the island will keep all who linger.<br><br>
+Fail to weave your strengths, and the jungle vines will grow through your dreams until you call this place a grave. Succeed, and the tide itself will carry you to the skies where dragons roam—and to the one who waits.<br><br>
+Choose unity. Choose escape. Or choose to watch the sun set on your hopes for all time.
+        </div>
+        <button id="intro-modal-ok" class="modal-ok-btn" style="margin-top:1em;">OK</button>
+      </div>
+    </div>
+    <div class="container" style="display:none;">
+        <div class="top-bar">
+            <div class="timers">
+                <span>Session: <span id="primary-timer">--:--</span></span>
+                <span>Round: <span id="turn-counter">- / -</span></span>
+                <span>Round Timer: <span id="secondary-timer">--:--</span></span>
+            </div>
+            <button id="start-game-btn">Start Game</button>
+        </div>
+        <div class="main-area">
+            <!-- LEFT -->
+            <div class="left-panel">
+                <div class="role-box">Role: <span id="player-role">Leader</span></div>
+                <div class="objective-box" id="objective-box">Elder Chew: Gather more Metal to upgrade the hull.</div>
+                <div class="inventory-box"><h2 style="margin-top:0;">Inventory</h2><ul id="inventory-list"></ul></div>
+            </div>
+            <!-- CENTER -->
+            <div class="center-panel"><div class="grid" id="grid"></div></div>
+            <!-- RIGHT -->
+            <div class="right-panel">
+                <div class="log-box" id="log-content"></div>
+                <div class="reflection-box">
+                    <textarea id="reflection-area" placeholder="Share your strategy"></textarea>
+                    <button id="submit-reflection">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script>
+// == GLOBAL STATE ==
+let state = null; // will hold all game state
+let timerInterval = null;
+let roundEndTimeout = null;
+let gameEnded = false;
+
+// == DOM ELEMENTS ==
+const sessionModal = document.getElementById('session-modal');
+const daySelect = document.getElementById('day-select');
+const groupSelect = document.getElementById('group-select');
+const teamNameInput = document.getElementById('team-name');
+const startSessionBtn = document.getElementById('start-session-btn');
+const container = document.querySelector('.container');
+const startGameBtn = document.getElementById('start-game-btn');
+const playerRoleElement = document.getElementById('player-role');
+const objectiveBox = document.getElementById('objective-box');
+const inventoryList = document.getElementById('inventory-list');
+const gridEl = document.getElementById('grid');
+const logContent = document.getElementById('log-content');
+const reflectionArea = document.getElementById('reflection-area');
+const reflectionBtn = document.getElementById('submit-reflection');
+const primaryTimer = document.getElementById('primary-timer');
+const secondaryTimer = document.getElementById('secondary-timer');
+const turnCounter = document.getElementById('turn-counter');
+
+// == UTILS ==
+function pad(n) { return n < 10 ? '0' + n : n; }
+function randomChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// == SESSION MODAL LOGIC ==
+function showSessionModal() {
+    sessionModal.style.display = 'flex';
+    container.style.display = 'none';
+}
+function hideSessionModal() {
+    sessionModal.style.display = 'none';
+    container.style.display = '';
+}
+function saveSessionInfo(sessionId, teamName) {
+    localStorage.setItem('raffles_sessionId', sessionId);
+    localStorage.setItem('raffles_teamName', teamName);
+}
+function getSessionInfo() {
+    return {
+        sessionId: localStorage.getItem('raffles_sessionId'),
+        teamName: localStorage.getItem('raffles_teamName')
+    };
+}
+
+// == GAME STATE INIT ==
+function newGameState(sessionId, teamName) {
+    // Generate grid items
+    let itemList = [];
+    const gridSize = CONFIG.GRID_SIZE;
+    const totalCells = gridSize * gridSize;
+    const nullCount = Math.round(totalCells * (CONFIG.GRID_NULL_PERCENTAGE / 100));
+    const itemCellCount = totalCells - nullCount;
+    const items = CONFIG.ITEMS;
+    const baseCount = Math.floor(itemCellCount / items.length);
+    let remainder = itemCellCount % items.length;
+    // Add baseCount of each item
+    items.forEach(e => { for (let i = 0; i < baseCount; i++) itemList.push(e.code); });
+    // Distribute remainder
+    for (let i = 0; i < remainder; i++) {
+        itemList.push(items[i % items.length].code);
+    }
+    // Add nulls
+    for (let i = 0; i < nullCount; i++) itemList.push(null);
+    // Shuffle
+    for (let i = itemList.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [itemList[i], itemList[j]] = [itemList[j], itemList[i]];
+    }
+    let itemsGrid = {};
+    let idx = 0;
+    for (let rr = 0; rr < CONFIG.GRID_SIZE; rr++) {
+        for (let cc = 0; cc < CONFIG.GRID_SIZE; cc++) {
+            itemsGrid[`${rr},${cc}`] = itemList[idx++];
+        }
+    }
+    itemsGrid[`0,0`] = null; // No item at start
+    // Debug log to verify distribution
+    console.log('itemsGrid:', itemsGrid);
+    // Precompute inject cells: 80% have injects, 20% do not
+    let allCells = [];
+    for (let rr = 0; rr < CONFIG.GRID_SIZE; rr++) {
+        for (let cc = 0; cc < CONFIG.GRID_SIZE; cc++) {
+            if (!(rr === 0 && cc === 0)) allCells.push(`${rr},${cc}`);
+        }
+    }
+    allCells = allCells.sort(() => Math.random() - 0.5);
+    const noInjectCount = Math.floor(allCells.length * 0.2);
+    const noInjectCells = new Set(allCells.slice(0, noInjectCount));
+    let injectCells = {};
+    for (let rr = 0; rr < CONFIG.GRID_SIZE; rr++) {
+        for (let cc = 0; cc < CONFIG.GRID_SIZE; cc++) {
+            const key = `${rr},${cc}`;
+            injectCells[key] = !noInjectCells.has(key);
+        }
+    }
+    return {
+        sessionId,
+        teamName,
+        roundNum: 1,
+        roundSeconds: CONFIG.ROUND_DURATION_SEC,
+        sessionSeconds: CONFIG.ROUND_COUNT * CONFIG.ROUND_DURATION_SEC,
+        inventory: { SPIRIT_ASH: 0, MOONWOOD: 0, STORM_IRON: 0, CORAL_RUNES: 0 },
+        itemsGrid,
+        injectCells,
+        visited: new Set([`0,0`]),
+        curr: { r: 0, c: 0 },
+        steps: 0,
+        logEntries: [],
+        roundHistory: [],
+        reflectionSubmittedThisRound: false,
+        gameStarted: false,
+        gameEnded: false,
+        startTime: null,
+        endTime: null,
+        lastRoundReflectionChecked: false
+    };
+}
+function saveGameState() {
+    localStorage.setItem('raffles_gameState', JSON.stringify({
+        ...state,
+        visited: Array.from(state.visited)
+    }));
+}
+function loadGameState() {
+    const raw = localStorage.getItem('raffles_gameState');
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    s.visited = new Set(s.visited);
+    return s;
+}
+function clearGameState() {
+    localStorage.removeItem('raffles_gameState');
+}
+
+// == UI RENDERING ==
+function renderInventory() {
+    inventoryList.innerHTML = '';
+    Object.entries(state.inventory).forEach(([code, qty]) => {
+        const li = document.createElement('li');
+        li.textContent = `${CONFIG.ITEMS.find(i => i.code === code).name}: ${qty}`;
+        inventoryList.appendChild(li);
+    });
+}
+function renderLog() {
+    logContent.innerHTML = '';
+    state.logEntries.forEach(entry => {
+        const msg = document.createElement('div');
+        msg.className = 'log-bubble';
+        if (entry.startsWith('--- Round ')) {
+            msg.style.textAlign = 'center';
+            msg.style.fontWeight = 'bold';
+            msg.style.background = '#f0f0f0';
+            msg.style.borderLeft = 'none';
+        } else if (entry.startsWith('Elder Chew:')) {
+            msg.classList.add('log-elder');
+        } else if (entry.startsWith('Inject Story:')) {
+            msg.classList.add('log-inject-story');
+        } else if (entry.startsWith('Reflection:') || entry.startsWith('Reflection Submitted')) {
+            msg.classList.add('log-user');
+        } else if (entry.startsWith('Reflection Missed')) {
+            msg.style.background = '#ffecec';
+            msg.style.borderLeft = '5px solid #ff5757';
+        } else if (entry.startsWith('Reflection Penalty:') || entry.startsWith('No reflection')) {
+            msg.style.background = '#fff0f0';
+            msg.style.borderLeft = '5px solid #ff4500';
+        } else if (entry.startsWith('Inventory updated:') || entry.startsWith('Inject:') || entry.startsWith('No inject')) {
+            msg.classList.add('log-system');
+        } else if (entry.startsWith('Leader starting') || entry.startsWith('Game Started')) {
+            msg.classList.add('log-system');
+            msg.style.fontWeight = 'bold';
+        } else if (entry.startsWith('Moved to')) {
+            msg.style.background = '#f0f8ff';
+            msg.style.borderLeft = '5px solid #4682b4';
+        }
+        msg.textContent = entry;
+        logContent.appendChild(msg);
+    });
+    logContent.scrollTop = logContent.scrollHeight;
+}
+function renderTimers() {
+    if (!state || !state.gameStarted) {
+        primaryTimer.textContent = '--:--';
+        secondaryTimer.textContent = '--:--';
+        turnCounter.textContent = '- / -';
+        return;
+    }
+    primaryTimer.textContent = `${pad(Math.floor(state.sessionSeconds/60))}:${pad(state.sessionSeconds%60)}`;
+    secondaryTimer.textContent = `${pad(Math.floor(state.roundSeconds/60))}:${pad(state.roundSeconds%60)}`;
+    if (state.roundSeconds <= 5) {
+        secondaryTimer.style.color = 'red';
+    } else {
+        secondaryTimer.style.color = 'black';
+    }
+    turnCounter.textContent = `${state.roundNum} / ${CONFIG.ROUND_COUNT}`;
+}
+function renderGrid() {
+    gridEl.innerHTML = '';
+    for (let r = 0; r < CONFIG.GRID_SIZE; r++) {
+        for (let c = 0; c < CONFIG.GRID_SIZE; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.r = r;
+            cell.dataset.c = c;
+            const key = `${r},${c}`;
+            if (state.visited.has(key)) cell.classList.add('visited');
+            if (state.curr && r === state.curr.r && c === state.curr.c) {
+                cell.classList.add('current');
+                cell.textContent = CONFIG.PLAYER_EMOJI;
+            } else if (!state.visited.has(key)) {
+                const itemCode = state.itemsGrid[key];
+                const itemObj = CONFIG.ITEMS.find(i => i.code === itemCode);
+                if (itemObj) {
+                    cell.textContent = itemObj.emoji;
+                } else {
+                    cell.textContent = "";
+                }
+            }
+            cell.onclick = onCellClick;
+            gridEl.appendChild(cell);
+        }
+    }
+}
+function updateObjectiveBox() {
+    objectiveBox.textContent = CONFIG.ELDER_CHEW_INTRO;
+}
+
+// == GAME LOGIC ==
+function startGame() {
+    if (state.gameStarted) return;
+    state.gameStarted = true;
+    state.startTime = Date.now();
+    state.sessionSeconds = CONFIG.ROUND_COUNT * CONFIG.ROUND_DURATION_SEC;
+    state.roundSeconds = CONFIG.ROUND_DURATION_SEC;
+    state.roundNum = 1;
+    state.steps = 0;
+    state.visited = new Set([`0,0`]);
+    state.curr = { r: 0, c: 0 };
+    state.logEntries = [];
+    state.roundHistory = [];
+    state.reflectionSubmittedThisRound = false;
+    state.gameEnded = false;
+    state.endTime = null;
+    // Log intro and round 1
+    state.logEntries.push(CONFIG.TEXT_TEMPLATES.leaderStart);
+    state.logEntries.push(CONFIG.TEXT_TEMPLATES.gameStart);
+    state.logEntries.push(CONFIG.TEXT_TEMPLATES.roundStart.replace('{roundNum}', state.roundNum));
+    state.logEntries.push(CONFIG.TEXT_TEMPLATES.elderChew.replace('{elderMessage}', CONFIG.ELDER_CHEW_MESSAGES[0]));
+    updateObjectiveBox();
+    renderLog();
+    renderInventory();
+    renderGrid();
+    renderTimers();
+    reflectionArea.value = '';
+    reflectionArea.disabled = false;
+    reflectionBtn.disabled = false;
+    saveGameState();
+    startTimers();
+}
+function startTimers() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        if (state.gameEnded) return;
+        const now = Date.now();
+        state.sessionSeconds = Math.max(0, Math.floor((state.startTime + CONFIG.ROUND_COUNT*CONFIG.ROUND_DURATION_SEC*1000 - now)/1000));
+        state.roundSeconds = Math.max(0, Math.floor((state.startTime + state.roundNum*CONFIG.ROUND_DURATION_SEC*1000 - now)/1000));
+        renderTimers();
+        if (state.roundSeconds === 0) {
+            handleRoundTimeout();
+        }
+        if (state.sessionSeconds === 0) {
+            endGame(CONFIG.TEXT_TEMPLATES.sessionEnd);
+        }
+    }, 250);
+}
+function handleRoundTimeout() {
+    if (!state.reflectionSubmittedThisRound) {
+        if (state.roundNum < CONFIG.ROUND_COUNT) {
+            // Penalty: lose a random item
+            const missedText = reflectionArea.value.trim();
+            const available = Object.keys(state.inventory).filter(code => state.inventory[code] > 0);
+            let lostItem = null;
+            let lostMsg = '';
+            if (available.length > 0) {
+                lostItem = randomChoice(available);
+                state.inventory[lostItem]--;
+                state.logEntries.push(
+                    CONFIG.TEXT_TEMPLATES.reflectionMissLog
+                        .replace('{roundNum}', state.roundNum)
+                        .replace('{text}', missedText)
+                );
+                state.logEntries.push(CONFIG.TEXT_TEMPLATES.penaltyItemLoss.replace('{itemName}', CONFIG.ITEMS.find(i => i.code === lostItem).name).replace('{itemEmoji}', CONFIG.ITEMS.find(i => i.code === lostItem).emoji));
+                lostMsg = `You lost 1 ${CONFIG.ITEMS.find(i => i.code === lostItem).name} ${CONFIG.ITEMS.find(i => i.code === lostItem).emoji}`;
+            } else {
+                state.logEntries.push(
+                    CONFIG.TEXT_TEMPLATES.reflectionMissLog
+                        .replace('{roundNum}', state.roundNum)
+                        .replace('{text}', missedText)
+                );
+                state.logEntries.push(CONFIG.TEXT_TEMPLATES.penaltyNoItem);
+                lostMsg = 'No item lost (your inventory was empty)';
+            }
+            if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+            state.roundHistory[state.roundNum-1].reflection = missedText;
+            state.roundHistory[state.roundNum-1].penalty = lostItem;
+            renderInventory();
+            renderLog();
+            // Show modal popup for penalty and block until acknowledged
+            let modalDone = false;
+            showBigModal({
+                emoji: '⚠️',
+                main: 'Reflection Missed!',
+                sub: lostMsg,
+                okText: 'OK',
+                borderColor: '#e63946',
+                eventType: 'Reflection Penalty',
+                onOk: () => { modalDone = true; }
+            });
+            // Block until modal is acknowledged
+            const block = Date.now();
+            function waitModal() {
+                if (!modalDone) return setTimeout(waitModal, 50);
+            }
+            waitModal();
+        }
+    }
+    if (state.roundNum < CONFIG.ROUND_COUNT) {
+        state.roundNum++;
+        state.roundSeconds = CONFIG.ROUND_DURATION_SEC;
+        state.steps = 0;
+        state.reflectionSubmittedThisRound = false;
+        reflectionArea.value = '';
+        reflectionArea.disabled = false;
+        reflectionBtn.disabled = false;
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.roundStart.replace('{roundNum}', state.roundNum));
+        // Always use the message at position (roundNum-1)
+        const elderMsgIdx = state.roundNum - 1;
+        const elderMsg = CONFIG.ELDER_CHEW_MESSAGES[elderMsgIdx] || '';
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.elderChew.replace('{elderMessage}', elderMsg));
+        updateObjectiveBox();
+        renderLog();
+        saveGameState();
+    } else {
+        endGame(CONFIG.TEXT_TEMPLATES.sessionEnd);
+    }
+}
+function endGame(msg, lastRoundHandled) {
+    if (!state.lastRoundReflectionChecked && !state.reflectionSubmittedThisRound && state.roundNum === CONFIG.ROUND_COUNT) {
+        const missedText = reflectionArea.value.trim();
+        const available = Object.keys(state.inventory).filter(code => state.inventory[code] > 0);
+        let lostItem = null;
+        let lostMsg = '';
+        if (available.length > 0) {
+            lostItem = randomChoice(available);
+            state.inventory[lostItem]--;
+            state.logEntries.push(
+                CONFIG.TEXT_TEMPLATES.reflectionMissLog
+                    .replace('{roundNum}', state.roundNum)
+                    .replace('{text}', missedText)
+            );
+            state.logEntries.push(CONFIG.TEXT_TEMPLATES.penaltyItemLoss.replace('{itemName}', CONFIG.ITEMS.find(i => i.code === lostItem).name).replace('{itemEmoji}', CONFIG.ITEMS.find(i => i.code === lostItem).emoji));
+            lostMsg = `You lost 1 ${CONFIG.ITEMS.find(i => i.code === lostItem).name} ${CONFIG.ITEMS.find(i => i.code === lostItem).emoji}`;
+        } else {
+            state.logEntries.push(
+                CONFIG.TEXT_TEMPLATES.reflectionMissLog
+                    .replace('{roundNum}', state.roundNum)
+                    .replace('{text}', missedText)
+            );
+            state.logEntries.push(CONFIG.TEXT_TEMPLATES.penaltyNoItem);
+            lostMsg = 'No item lost (your inventory was empty)';
+        }
+        if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+        state.roundHistory[state.roundNum-1].reflection = missedText;
+        state.roundHistory[state.roundNum-1].penalty = lostItem;
+        renderInventory();
+        renderLog();
+        state.lastRoundReflectionChecked = true;
+        // Show modal popup for penalty and block until acknowledged
+        let modalDone = false;
+        showBigModal({
+            emoji: '⚠️',
+            main: 'Reflection Missed!',
+            sub: lostMsg,
+            okText: 'OK',
+            borderColor: '#e63946',
+            eventType: 'Reflection Penalty',
+            onOk: () => { modalDone = true; }
+        });
+        // Block until modal is acknowledged
+        const block = Date.now();
+        function waitModal() {
+            if (!modalDone) return setTimeout(waitModal, 50);
+        }
+        waitModal();
+    }
+    state.gameEnded = true;
+    state.endTime = Date.now();
+    clearInterval(timerInterval);
+    showBigModal({
+        emoji: '⏰',
+        main: 'Game Over',
+        sub: msg,
+        okText: 'Download Results',
+        onOk: () => { exportResults(); }
+    });
+    saveGameState();
+}
+function onCellClick(e) {
+    if (!state.gameStarted || state.gameEnded) return;
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    const r = +cell.dataset.r;
+    const c = +cell.dataset.c;
+    const key = `${r},${c}`;
+    if (state.steps >= CONFIG.MAX_STEPS_PER_ROUND) {
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.noSteps);
+        renderLog();
+        return;
+    }
+    if (state.visited.has(key)) {
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.revisitCell);
+        renderLog();
+        return;
+    }
+    if (!isAdjacent(r, c)) {
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.invalidMove);
+        renderLog();
+        return;
+    }
+    // Valid move
+    state.steps++;
+    state.visited.add(key);
+    state.curr = { r, c };
+    renderGrid();
+    state.logEntries.push(CONFIG.TEXT_TEMPLATES.moveLog.replace('{r}', r).replace('{c}', c).replace('{steps}', state.steps).replace('{maxSteps}', CONFIG.MAX_STEPS_PER_ROUND));
+    renderLog();
+    // Pickup phase
+    setTimeout(() => showPickupModal(key), 300);
+    saveGameState();
+}
+function isAdjacent(r, c) {
+    if (!state.curr) return false;
+    const dr = Math.abs(r - state.curr.r);
+    const dc = Math.abs(c - state.curr.c);
+    return dr + dc === 1;
+}
+function showPickupModal(key) {
+    const cellItem = state.itemsGrid[key];
+    let options;
+    if (cellItem) {
+        options = [{ code: cellItem, qty: CONFIG.PICKUP_SINGLE_QTY }];
+    } else {
+        const shuffled = CONFIG.ITEMS.slice().sort(() => Math.random() - 0.5);
+        options = [
+            { code: shuffled[0].code, qty: CONFIG.PICKUP_CHOICE_QTY },
+            { code: shuffled[1].code, qty: CONFIG.PICKUP_CHOICE_QTY }
+        ];
+    }
+    if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+    state.roundHistory[state.roundNum-1].choicesGiven = options.map(opt => ({ code: opt.code, qty: opt.qty }));
+    saveGameState();
+    if (options.length === 1) {
+        showBigModal({
+            emoji: CONFIG.ITEMS.find(i => i.code === options[0].code).emoji,
+            main: `+${options[0].qty} ${CONFIG.ITEMS.find(i => i.code === options[0].code).name}`,
+            sub: CONFIG.TEXT_TEMPLATES.pickupBonus,
+            okText: 'Collect',
+            onOk: () => {
+                state.inventory[options[0].code] += options[0].qty;
+                state.logEntries.push(safeInventoryLog(options[0].code, options[0].qty));
+                if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+                state.roundHistory[state.roundNum-1].choiceMade = { code: options[0].code, qty: options[0].qty };
+                renderInventory();
+                renderLog();
+                saveGameState();
+                if (state.roundNum >= 4 && state.injectCells[key]) {
+                    setTimeout(() => showInjectLogic(key), 300);
+                }
+            }
+        });
+    } else {
+        showBigModal({
+            emoji: '',
+            main: CONFIG.TEXT_TEMPLATES.pickupChoiceTitle,
+            sub: options.map(opt => `<button class='item-choice-btn' style='margin:1em 1em;font-size:2em;padding:1em 2em;font-weight:bold;border-radius:12px;display:inline-block;background:#f3f3f3;border:2px solid #e0e0e0;color:#222;' data-code='${opt.code}' data-qty='${opt.qty}'>${CONFIG.ITEMS.find(i => i.code === opt.code).emoji} +${opt.qty} ${CONFIG.ITEMS.find(i => i.code === opt.code).name}</button>`).join(''),
+            okText: '',
+            onOk: null
+        });
+    }
+}
+function showInjectLogic(key) {
+    const injectStory = randomChoice(CONFIG.INJECT_STORIES);
+    state.logEntries.push(CONFIG.TEXT_TEMPLATES.injectStory ? CONFIG.TEXT_TEMPLATES.injectStory.replace('{story}', injectStory) : `Inject Story: ${injectStory}`);
+    renderLog();
+    const rand = Math.random();
+    let injectType = rand < 0.3 ? 'random' : 'choice';
+    const available = Object.keys(state.inventory).filter(code => state.inventory[code] > 0);
+    if (available.length === 0) {
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.injectNoLoss);
+        if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+        state.roundHistory[state.roundNum-1].inject = { type: 'none', story: injectStory };
+        renderLog();
+        saveGameState();
+        return;
+    }
+    if (injectType === 'random') {
+        const code = randomChoice(available);
+        state.inventory[code]--;
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.injectLossLog.replace('{itemName}', CONFIG.ITEMS.find(i => i.code === code).name).replace('{itemEmoji}', CONFIG.ITEMS.find(i => i.code === code).emoji));
+        renderInventory();
+        showBigModal({
+            emoji: CONFIG.ITEMS.find(i => i.code === code).emoji,
+            main: CONFIG.TEXT_TEMPLATES.modalItemLossTitle.replace('{itemName}', CONFIG.ITEMS.find(i => i.code === code).name),
+            sub: injectStory,
+            okText: 'OK',
+            onOk: null
+        });
+        if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+        state.roundHistory[state.roundNum-1].inject = { type: 'random', item: code, story: injectStory };
+        saveGameState();
+        renderLog();
+    } else {
+        showBigModal({
+            emoji: '',
+            main: CONFIG.TEXT_TEMPLATES.injectTitle,
+            sub: `<div style='margin-bottom:1em;'>${injectStory}</div>` +
+                available.map(code => `<button class='inject-choice-btn' style='margin:1em 1em;font-size:2em;padding:1em 2em;font-weight:bold;border-radius:12px;display:inline-block;background:#f3f3f3;border:2px solid #e0e0e0;color:#222;' data-code='${code}'>${CONFIG.ITEMS.find(i => i.code === code).emoji} -1 ${CONFIG.ITEMS.find(i => i.code === code).name}</button>`).join(''),
+            okText: '',
+            onOk: null
+        });
+    }
+}
+function showBigModal({emoji, main, sub, okText, onOk}) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal-content">
+        <div style='font-size:2.5em;margin-bottom:0.5em;'>${emoji || ''}</div>
+        <div style='font-size:1.5em;font-weight:bold;margin-bottom:0.7em;'>${main}</div>
+        <div style='font-size:1.1em;color:#444;margin-bottom:1.2em;'>${sub || ''}</div>
+        ${okText ? `<button class='modal-ok-btn' style='font-size:1.2em;padding:0.7em 2.5em;margin-top:1em;border-radius:18px;border:2px solid #222;background:#e0e0e0;color:#222;font-weight:600;cursor:pointer;'>${okText}</button>` : ''}
+    </div>`;
+    document.body.appendChild(modal);
+    // Attach item-choice-btn handlers if present
+    modal.querySelectorAll('.item-choice-btn').forEach(btn => {
+        btn.onclick = function() {
+            modal.querySelectorAll('.item-choice-btn').forEach(b => b.disabled = true);
+            const code = this.dataset.code;
+            const qty = +this.dataset.qty;
+            state.inventory[code] += qty;
+            state.logEntries.push(safeInventoryLog(code, qty));
+            if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+            state.roundHistory[state.roundNum-1].choiceMade = { code, qty };
+            renderInventory();
+            renderLog();
+            saveGameState();
+            modal.remove();
+            if (state.roundNum >= 4 && state.injectCells && state.injectCells[state.curr.r + ',' + state.curr.c]) {
+                setTimeout(() => showInjectLogic(state.curr.r + ',' + state.curr.c), 300);
+            }
+        };
+    });
+    // Attach inject-choice-btn handlers if present
+    modal.querySelectorAll('.inject-choice-btn').forEach(btn => {
+        btn.onclick = function() {
+            modal.querySelectorAll('.inject-choice-btn').forEach(b => b.disabled = true);
+            const code = this.dataset.code;
+            state.inventory[code]--;
+            state.logEntries.push(CONFIG.TEXT_TEMPLATES.injectLossLog.replace('{itemName}', CONFIG.ITEMS.find(i => i.code === code).name).replace('{itemEmoji}', CONFIG.ITEMS.find(i => i.code === code).emoji));
+            renderInventory();
+            if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+            state.roundHistory[state.roundNum-1].inject = { type: 'choice', item: code, story: modal.querySelector('.modal-content div:nth-child(3)').textContent };
+            saveGameState();
+            modal.remove();
+        };
+    });
+    const okBtn = modal.querySelector('.modal-ok-btn');
+    if (okBtn) {
+        okBtn.addEventListener('click', () => {
+            modal.remove();
+            if (typeof onOk === 'function') onOk();
+        });
+    }
+}
+
+// == REFLECTION LOGIC ==
+reflectionBtn.onclick = function() {
+    if (state.gameEnded || !state.gameStarted) return;
+    const text = reflectionArea.value.trim();
+    if (!state.reflectionSubmittedThisRound) {
+        state.logEntries.push(
+            CONFIG.TEXT_TEMPLATES.reflectionSubmitLog
+                .replace('{roundNum}', state.roundNum)
+                .replace('{text}', text)
+        );
+        state.reflectionSubmittedThisRound = true;
+        reflectionArea.disabled = true;
+        reflectionBtn.disabled = true;
+        if (!state.roundHistory[state.roundNum-1]) state.roundHistory[state.roundNum-1] = { round: state.roundNum };
+        state.roundHistory[state.roundNum-1].reflection = text;
+        renderLog();
+        saveGameState();
+    }
+};
+
+// == SESSION MODAL EVENTS ==
+function logSessionId() {
+    const day = daySelect.value;
+    const group = groupSelect.value;
+    if (day && group) {
+        console.log('Selected session ID:', day + group);
+    }
+}
+daySelect.addEventListener('change', logSessionId);
+groupSelect.addEventListener('change', logSessionId);
+
+startSessionBtn.onclick = function() {
+    const day = daySelect.value;
+    const group = groupSelect.value;
+    const sessionId = day + group;
+    const teamName = teamNameInput.value.trim();
+    if (!day || !group || !teamName) {
+        alert('Please select a day, group, and enter a team name.');
+        return;
+    }
+    console.log('Session started with session ID:', sessionId);
+    saveSessionInfo(sessionId, teamName);
+    state = newGameState(sessionId, teamName);
+    hideSessionModal();
+    // Show intro modal before main game
+    document.getElementById('intro-modal').style.display = 'flex';
+};
+
+// == START GAME BUTTON ==
+startGameBtn.onclick = function() {
+    if (!state) {
+        const { sessionId, teamName } = getSessionInfo();
+        state = newGameState(sessionId, teamName);
+    }
+    startGame();
+};
+
+// == ON LOAD: RESUME OR NEW GAME ==
+window.onload = function() {
+    const saved = loadGameState();
+    if (saved && !saved.gameEnded) {
+        if (confirm('Resume previous game?')) {
+            state = saved;
+            hideSessionModal();
+            container.style.display = '';
+            renderInventory();
+            renderLog();
+            renderGrid();
+            updateObjectiveBox();
+            renderTimers();
+            playerRoleElement.textContent = 'Leader';
+            if (state.gameStarted && !state.gameEnded) startTimers();
+            return;
+        } else {
+            clearGameState();
+        }
+    }
+    showSessionModal();
+};
+
+// == EXPORT LOGIC ==
+function exportResults() {
+    if (window.docx) {
+        exportDocx();
+    } else {
+        alert('Word export is not available.');
+    }
+}
+function exportDocx() {
+    const startTime = state.startTime ? toGmt8(state.startTime) : '';
+    const endTime = state.endTime ? toGmt8(state.endTime) : '';
+    // Build table rows
+    const tableRows = [
+        new window.docx.TableRow({
+            children: [
+                new window.docx.TableCell({children: [new window.docx.Paragraph({text: 'Round', bold: true})]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph({text: 'Choice', bold: true})]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph({text: 'Inject', bold: true})]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph({text: 'Reflection', bold: true})]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph({text: 'Penalty', bold: true})]}),
+            ]
+        })
+    ];
+    state.roundHistory.forEach((r, i) => {
+        tableRows.push(new window.docx.TableRow({
+            children: [
+                new window.docx.TableCell({children: [new window.docx.Paragraph(String(r.round || (i+1)))]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph(r.choiceMade ? JSON.stringify(r.choiceMade) : '')]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph(r.inject ? JSON.stringify(r.inject) : '')]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph(r.reflection || '')]}),
+                new window.docx.TableCell({children: [new window.docx.Paragraph(r.penalty || '')]}),
+            ]
+        }));
+    });
+
+    const doc = new window.docx.Document({
+        sections: [{
+            properties: {},
+            children: [
+                new window.docx.Paragraph({
+                    text: `Session: ${state.sessionId} | Team: ${state.teamName}`,
+                    heading: window.docx.HeadingLevel.HEADING_1
+                }),
+                new window.docx.Paragraph({
+                    text: `Game Start: ${startTime} | Game End: ${endTime}`,
+                    spacing: { after: 200 }
+                }),
+                new window.docx.Table({
+                    rows: tableRows
+                })
+            ]
+        }]
+    });
+    window.docx.Packer.toBlob(doc).then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `raffles-game-${state.sessionId}-${state.teamName}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    });
+}
+// Optionally load docx.js from CDN for Word export
+(function(){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js';
+    s.onload = function() { window.docx = window.docx; };
+    document.head.appendChild(s);
+})();
+
+window.addEventListener('DOMContentLoaded', function() {
+  daySelect.innerHTML = '';
+  CONFIG.DAYS.forEach(day => {
+    const opt = document.createElement('option');
+    opt.value = day;
+    opt.textContent = day;
+    daySelect.appendChild(opt);
+  });
+  groupSelect.innerHTML = '';
+  CONFIG.GROUPS.forEach(group => {
+    const opt = document.createElement('option');
+    opt.value = group;
+    opt.textContent = group;
+    groupSelect.appendChild(opt);
+  });
+});
+
+// Safe inventory log helper
+function safeInventoryLog(code, qty) {
+    const itemObj = CONFIG.ITEMS.find(i => i.code === code);
+    if (!itemObj) return `Inventory updated: +${qty} [Unknown Item]`;
+    return CONFIG.TEXT_TEMPLATES.inventoryUpdated
+        .replace('{qty}', qty)
+        .replace('{itemName}', itemObj.name)
+        .replace('{itemEmoji}', itemObj.emoji);
+}
+
+function toGmt8(ts) {
+    if (!ts) return '';
+    const d = new Date(typeof ts === 'string' ? parseInt(ts) : ts);
+    // Always convert to UTC, then add 8 hours
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const gmt8 = new Date(utc + 8 * 3600000);
+    return gmt8.getFullYear() + '-' +
+        String(gmt8.getMonth()+1).padStart(2,'0') + '-' +
+        String(gmt8.getDate()).padStart(2,'0') + ' ' +
+        String(gmt8.getHours()).padStart(2,'0') + ':' +
+        String(gmt8.getMinutes()).padStart(2,'0') + ':' +
+        String(gmt8.getSeconds()).padStart(2,'0') + ' (GMT+8)';
+}
+
+function formatInject(r) {
+    if (!r.inject || r.inject.type === 'none') return 'null';
+    if (typeof r.inject !== 'object') return r.inject;
+    if (r.inject.type === 'random') {
+        return `random - ${r.inject.item || ''}`;
+    }
+    if (r.inject.type === 'choice') {
+        let choices = '';
+        if (Array.isArray(r.choicesGiven)) {
+            choices = r.choicesGiven.map(opt => `${opt.code}${opt.qty ? ' x'+opt.qty : ''}`).join(', ');
+        }
+        return `choice - ${r.inject.item || ''}${choices ? ' (choices: ' + choices + ')' : ''}`;
+    }
+    return r.inject.type || 'null';
+}
+
+// == INTRO MODAL EVENTS ==
+document.getElementById('intro-modal-ok').onclick = function() {
+    document.getElementById('intro-modal').style.display = 'none';
+    container.style.display = '';
+    renderInventory();
+    renderLog();
+    renderGrid();
+    updateObjectiveBox();
+    renderTimers();
+    playerRoleElement.textContent = 'Leader';
+    saveGameState();
+};
+    </script>
+</body>
+</html> 
