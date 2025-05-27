@@ -1,7 +1,7 @@
 window.CONFIG = {
   "DAYS": ["D1", "D2", "D3"],
   "GROUPS": ["G01", "G02", "G03", "G04", "G05", "G06", "G07", "G08", "G09", "G10", "G11", "G12"],
-  "ROUND_COUNT": 12,
+  "ROUND_COUNT": 10,
   "ROUND_DURATION_SEC": 90,
   "SESSION_DURATION_SEC": 240,
   "GRID_SIZE": 5,
