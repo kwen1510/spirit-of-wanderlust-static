@@ -22,7 +22,7 @@
         .center-panel { display: flex; align-items: center; justify-content: center; overflow: auto; height: 100%; width: 100%; }
         .grid { display: grid; gap: 8px; background: #fff; box-shadow: 2px 2px 12px rgba(0,0,0,0.10); grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); align-content: center; justify-content: center; padding: 24px; border-radius: 18px; width:  clamp(320px, 60vmin, 700px); height: clamp(320px, 60vmin, 700px); box-sizing: border-box; }
         .cell { position: relative; aspect-ratio: 1; border-radius: 12px !important; border: 2px solid #e0e0e0 !important; background: #f3f3f3 !important; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, border 0.2s; font-size: 2.2em; }
-        .cell.visited { background: #f7f7f7 !important; color: #bbb; cursor: default; }
+        .cell.visited { background: #cccccc !important; color: #bbb; cursor: default; }
         .cell:hover:not(.visited) { background: #e8f8ff; }
         .cell.current { border: 3px solid #222 !important; background: #e0e0e0 !important; }
         .role-box, .objective-box, .inventory-box { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 18px; box-shadow: 0 2px 8px #0001; padding: 1.1em 1.2em; width: 100%; box-sizing: border-box; font-size: 1.15em; display: flex; flex-direction: column; justify-content: center; }
@@ -176,9 +176,12 @@
             transform: translateY(0);
         }
     </style>
+    <script src="elder-chew-messages.js"></script>
+    <script src="role-introductions.js"></script>
+    <script src="config.js"></script>
 </head>
 <body>
-    <!-- Session/Team Selection Modal -->
+    <!-- Session/Selection Modal -->
     <div id="session-modal" class="modal-bg">
       <div class="modal-content">
         <h2>Raffles Parable</h2>
@@ -186,8 +189,8 @@
         <select id="day-select"></select>
         <label for="group-select">Group</label>
         <select id="group-select"></select>
-        <label for="team-name">Team Name</label>
-        <input type="text" id="team-name" maxlength="32" placeholder="Enter your team name" />
+        <label for="team-name">Your Name</label>
+        <input type="text" id="team-name" maxlength="32" placeholder="Enter your name" />
         <button id="start-session-btn">Start Session</button>
       </div>
     </div>
@@ -195,10 +198,15 @@
       <div class="modal-content" style="max-height:70vh;overflow-y:auto;">
         <h2>Prologue</h2>
         <div id="intro-modal-text" style="font-size:1.15em;text-align:left;line-height:1.5;max-height:45vh;overflow-y:auto;margin-bottom:2em;">
-Hear me, young leaders of five proud tribes—yet only four now stand upon this sand.<br><br>
-Divide the burden, share the risk. When one of you falters, three must lift. When doubt darkens one heart, the other hearts must blaze brighter. For the sea shows no mercy to the lone or the proud, and the island will keep all who linger.<br><br>
-Fail to weave your strengths, and the jungle vines will grow through your dreams until you call this place a grave. Succeed, and the tide itself will carry you to the skies where dragons roam—and to the one who waits.<br><br>
-Choose unity. Choose escape. Or choose to watch the sun set on your hopes for all time.
+To save Derbbie, you must rebuild the battleship with the four sacred resources.<br><br>
+Lose even one, and you'll stay stranded while she fades beyond the clouds.<br>
+Choose wisely. Protect what matters. Or be forgotten with the island.<br>
+~ Elder Chew<br><br>
+You have been stranded on an island. Your only hope to leave this island lies in rebuilding a damaged battleship, once used by Elder Chew, who now communicates through mystic voice messages. The ship can only be repaired by retrieving and protecting four critical resources:<br><br>
+🌲 <b>Moonwood</b> (Wally): Fuel and material to restore the ship's structure<br>
+⚡ <b>Storm-Iron</b> (Leo): Reinforcement for the ship's hull and defenses<br>
+🌀 <b>Coral Runes</b> (Luca): Circuitry that powers the ship's navigation system<br>
+🔥 <b>Spirit Ash</b> (Charlie): Magical dust that cloaks the ship from threats<br>
         </div>
         <button id="intro-modal-ok" class="modal-ok-btn" style="margin-top:1em;">OK</button>
       </div>
@@ -225,13 +233,12 @@ Choose unity. Choose escape. Or choose to watch the sun set on your hopes for al
             <div class="right-panel">
                 <div class="log-box" id="log-content"></div>
                 <div class="reflection-box">
-                    <textarea id="reflection-area" placeholder="Share your strategy"></textarea>
+                    <textarea id="reflection-area" placeholder="Share your reflections..."></textarea>
                     <button id="submit-reflection">Submit</button>
                 </div>
             </div>
         </div>
     </div>
-    <script src="config.js"></script>
     <script>
 // == GLOBAL STATE ==
 let state = null; // will hold all game state
@@ -353,7 +360,8 @@ function newGameState(sessionId, teamName) {
         gameEnded: false,
         startTime: null,
         endTime: null,
-        lastRoundReflectionChecked: false
+        lastRoundReflectionChecked: false,
+        roundTimeoutHandled: false
     };
 }
 function saveGameState() {
@@ -378,7 +386,8 @@ function renderInventory() {
     inventoryList.innerHTML = '';
     Object.entries(state.inventory).forEach(([code, qty]) => {
         const li = document.createElement('li');
-        li.textContent = `${CONFIG.ITEMS.find(i => i.code === code).name}: ${qty}`;
+        const itemObj = CONFIG.ITEMS.find(i => i.code === code);
+        li.textContent = `${itemObj.name} ${itemObj.emoji}: ${qty}`;
         inventoryList.appendChild(li);
     });
 }
@@ -421,18 +430,21 @@ function renderLog() {
 function renderTimers() {
     if (!state || !state.gameStarted) {
         primaryTimer.textContent = '--:--';
-        secondaryTimer.textContent = '--:--';
-        turnCounter.textContent = '- / -';
+        turnCounter.textContent = '--';
+        secondaryTimer.textContent = '--';
         return;
     }
-    primaryTimer.textContent = `${pad(Math.floor(state.sessionSeconds/60))}:${pad(state.sessionSeconds%60)}`;
-    secondaryTimer.textContent = `${pad(Math.floor(state.roundSeconds/60))}:${pad(state.roundSeconds%60)}`;
+    // Show session timer in mm:ss
+    const min = Math.floor(state.sessionSeconds / 60);
+    const sec = state.sessionSeconds % 60;
+    primaryTimer.textContent = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    turnCounter.textContent = `${state.roundNum} / ${CONFIG.ROUND_COUNT}`;
+    secondaryTimer.textContent = `${state.roundSeconds.toString().padStart(2, '0')}`;
     if (state.roundSeconds <= 5) {
         secondaryTimer.style.color = 'red';
     } else {
         secondaryTimer.style.color = 'black';
     }
-    turnCounter.textContent = `${state.roundNum} / ${CONFIG.ROUND_COUNT}`;
 }
 function renderGrid() {
     gridEl.innerHTML = '';
@@ -443,7 +455,19 @@ function renderGrid() {
             cell.dataset.r = r;
             cell.dataset.c = c;
             const key = `${r},${c}`;
-            if (state.visited.has(key)) cell.classList.add('visited');
+            
+            // Set cell styles based on state
+            if (state.visited.has(key)) {
+                cell.classList.add('visited');
+                cell.style.background = '#cccccc';
+                cell.style.cursor = 'default';
+            } else if (state.curr && isAdjacent(r, c) && !state.visited.has(key)) {
+                cell.style.background = '#d4f8e8'; // light green
+                cell.style.border = '2px solid #27ae60'; // green border
+                cell.style.cursor = 'pointer';
+                cell.style.boxShadow = '0 0 16px 4px #27ae60, 0 0 0 4px #b2f7cc'; // green glow
+            }
+            
             if (state.curr && r === state.curr.r && c === state.curr.c) {
                 cell.classList.add('current');
                 cell.textContent = CONFIG.PLAYER_EMOJI;
@@ -462,10 +486,15 @@ function renderGrid() {
     }
 }
 function updateObjectiveBox() {
-    objectiveBox.textContent = CONFIG.ELDER_CHEW_INTRO;
+    objectiveBox.textContent = window.CONFIG_MESSAGES['Charlie'];
 }
 
 // == GAME LOGIC ==
+function loadElderMessages() {
+    CONFIG.ELDER_CHEW_MESSAGES = window.ELDER_CHEW_MESSAGES.charlie || [];
+    return Promise.resolve();
+}
+
 function startGame() {
     if (state.gameStarted) return;
     state.gameStarted = true;
@@ -481,39 +510,56 @@ function startGame() {
     state.reflectionSubmittedThisRound = false;
     state.gameEnded = false;
     state.endTime = null;
-    // Log intro and round 1
-    state.logEntries.push(CONFIG.TEXT_TEMPLATES.leaderStart);
-    state.logEntries.push(CONFIG.TEXT_TEMPLATES.gameStart);
-    state.logEntries.push(CONFIG.TEXT_TEMPLATES.roundStart.replace('{roundNum}', state.roundNum));
-    state.logEntries.push(CONFIG.TEXT_TEMPLATES.elderChew.replace('{elderMessage}', CONFIG.ELDER_CHEW_MESSAGES[0]));
-    updateObjectiveBox();
-    renderLog();
-    renderInventory();
-    renderGrid();
-    renderTimers();
-    reflectionArea.value = '';
-    reflectionArea.disabled = false;
-    reflectionBtn.disabled = false;
-    saveGameState();
-    startTimers();
+    state.roundTimeoutHandled = false;
+    // Load elder messages before starting
+    loadElderMessages().then(() => {
+        // Log intro and round 1
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.leaderStart);
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.gameStart);
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.roundStart.replace('{roundNum}', state.roundNum));
+        state.logEntries.push(CONFIG.TEXT_TEMPLATES.elderChew.replace('{elderMessage}', CONFIG.ELDER_CHEW_MESSAGES[0]));
+        updateObjectiveBox();
+        renderLog();
+        renderInventory();
+        renderGrid();
+        renderTimers(); // Ensure UI updates
+        reflectionArea.value = '';
+        reflectionArea.disabled = false;
+        reflectionBtn.disabled = false;
+        saveGameState();
+        startTimers();
+    });
 }
+
 function startTimers() {
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
-        if (state.gameEnded) return;
-        const now = Date.now();
-        state.sessionSeconds = Math.max(0, Math.floor((state.startTime + CONFIG.ROUND_COUNT*CONFIG.ROUND_DURATION_SEC*1000 - now)/1000));
-        state.roundSeconds = Math.max(0, Math.floor((state.startTime + state.roundNum*CONFIG.ROUND_DURATION_SEC*1000 - now)/1000));
+        if (!state.gameStarted || state.gameEnded) return;
+
+        // Decrement timers
+        state.roundSeconds--;
+        state.sessionSeconds--;
+        if (state.sessionSeconds < 0) state.sessionSeconds = 0;
+
         renderTimers();
-        if (state.roundSeconds === 0) {
+
+        if (state.roundSeconds <= 0 && !state.roundTimeoutHandled) {
+            state.roundTimeoutHandled = true;
             handleRoundTimeout();
         }
+        if (state.roundSeconds > 0) {
+            state.roundTimeoutHandled = false;
+        }
         if (state.sessionSeconds === 0) {
+            state.gameEnded = true;
+            clearInterval(timerInterval);
             endGame(CONFIG.TEXT_TEMPLATES.sessionEnd);
         }
-    }, 250);
+    }, 1000);
 }
+
 function handleRoundTimeout() {
+    console.log('[ROUND] handleRoundTimeout called, roundNum:', state.roundNum);
     if (!state.reflectionSubmittedThisRound) {
         if (state.roundNum < CONFIG.ROUND_COUNT) {
             // Penalty: lose a random item
@@ -566,6 +612,7 @@ function handleRoundTimeout() {
     }
     if (state.roundNum < CONFIG.ROUND_COUNT) {
         state.roundNum++;
+        console.log('[ROUND] Advancing to round', state.roundNum);
         state.roundSeconds = CONFIG.ROUND_DURATION_SEC;
         state.steps = 0;
         state.reflectionSubmittedThisRound = false;
@@ -579,8 +626,12 @@ function handleRoundTimeout() {
         state.logEntries.push(CONFIG.TEXT_TEMPLATES.elderChew.replace('{elderMessage}', elderMsg));
         updateObjectiveBox();
         renderLog();
+        renderTimers(); // Ensure UI updates
         saveGameState();
+        // If the user did not take a step, too bad, they lose that step (no extra handling needed)
+        console.log('[ROUND] New round started. Steps reset. If user did not move last round, those steps are lost.');
     } else {
+        console.log('[ROUND] Max rounds reached, ending game');
         endGame(CONFIG.TEXT_TEMPLATES.sessionEnd);
     }
 }
@@ -859,7 +910,7 @@ startSessionBtn.onclick = function() {
     const sessionId = day + group;
     const teamName = teamNameInput.value.trim();
     if (!day || !group || !teamName) {
-        alert('Please select a day, group, and enter a team name.');
+        alert('Please select a day, group, and enter a name.');
         return;
     }
     console.log('Session started with session ID:', sessionId);
@@ -962,8 +1013,84 @@ function exportDocx() {
         document.body.appendChild(a);
         a.click();
         a.remove();
+        // After download, show summary modal
+        showGameSummaryModal();
     });
 }
+
+function showGameSummaryModal() {
+    // Helper to get emoji by code
+    function getEmoji(code) {
+        const item = CONFIG.ITEMS.find(i => i.code === code);
+        return item ? item.emoji : code || '';
+    }
+
+    // Build summary HTML
+    let html = `<div style='font-size:1.2em;margin-bottom:1em;'><b>Session:</b> ${state.sessionId} <br><b>Team:</b> ${state.teamName}</div>`;
+    html += `<div style='margin-bottom:1em;'><b>Rounds Played:</b> ${state.roundHistory.length}</div>`;
+    html += `<table style='width:100%;border-collapse:collapse;font-size:1em;margin-bottom:1.5em;'>`;
+    html += `<tr style='background:#f0f0f0;font-weight:bold;border-bottom:2px solid #ddd;'>
+        <td style="border-right:1px solid #ddd;">Round</td>
+        <td style="border-right:1px solid #ddd;">Choices</td>
+        <td style="border-right:1px solid #ddd;">Chosen</td>
+        <td style="border-right:1px solid #ddd;">Inject</td>
+        <td style="border-right:1px solid #ddd;">Reflection</td>
+        <td>Penalty</td>
+    </tr>`;
+    state.roundHistory.forEach((r, i) => {
+        // Choices given (array of {code, qty})
+        let choicesGiven = '';
+        if (r.choicesGiven && Array.isArray(r.choicesGiven)) {
+            choicesGiven = r.choicesGiven.map(opt => getEmoji(opt.code) + (opt.qty > 1 ? ` x${opt.qty}` : '')).join(' ');
+        }
+        // Chosen
+        let chosen = '';
+        if (r.choiceMade) {
+            chosen = getEmoji(r.choiceMade.code) + (r.choiceMade.qty > 1 ? ` x${r.choiceMade.qty}` : '');
+        }
+        // Inject (show only emoji if item lost, or blank)
+        let inject = '';
+        if (r.inject && typeof r.inject === 'object') {
+            if (r.inject.type === 'random' || r.inject.type === 'choice') {
+                inject = getEmoji(r.inject.item);
+            }
+        }
+        // Reflection
+        let reflection = r.reflection || '';
+        // Penalty (emoji if item lost)
+        let penalty = '';
+        if (r.penalty) penalty = getEmoji(r.penalty);
+
+        html += `<tr style='background:${i%2===0?'#fafafa':'#f5f5f5'};'>
+            <td style='padding:0.4em 0.7em;border-right:1px solid #ddd;'>${r.round || (i+1)}</td>
+            <td style='padding:0.4em 0.7em;border-right:1px solid #ddd;'>${choicesGiven}</td>
+            <td style='padding:0.4em 0.7em;border-right:1px solid #ddd;'>${chosen}</td>
+            <td style='padding:0.4em 0.7em;border-right:1px solid #ddd;'>${inject}</td>
+            <td style='padding:0.4em 0.7em;border-right:1px solid #ddd;'>${reflection}</td>
+            <td style='padding:0.4em 0.7em;'>${penalty}</td>
+        </tr>`;
+    });
+    html += `</table>`;
+    html += `<div style='text-align:center;'><button id='reset-game-btn' style='background:#e0e0e0;color:#222;font-size:1.2em;padding:0.7em 2em;border:none;border-radius:18px;box-shadow:0 2px 8px #0001;cursor:pointer;display:inline-block;'>Reset Game</button></div>`;
+
+    // Show modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal-content" style="max-width:95vw;max-height:90vh;width:95vw;height:90vh;overflow:auto;padding:3em 3.5em;text-align:left;">
+        <h2 style='text-align:center;'>Game Summary</h2>
+        ${html}
+    </div>`;
+    document.body.appendChild(modal);
+
+    // Reset button logic
+    modal.querySelector('#reset-game-btn').onclick = function() {
+        if (confirm('Are you sure you want to reset the game?')) {
+            clearGameState();
+            location.reload();
+        }
+    };
+}
+
 // Optionally load docx.js from CDN for Word export
 (function(){
     var s = document.createElement('script');

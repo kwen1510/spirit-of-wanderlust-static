@@ -1,0 +1,37 @@
+<title>Leo's Reflection Console</title>
+<h1 style="text-align:center;">Leo's Reflection Console</h1>
+const elderMessages = window.ELDER_CHEW_MESSAGES.leo || [];
+const prologue = window.CONFIG_MESSAGES['Leo'];
+function exportDocx() {
+    const startTime = new Date().toLocaleString();
+    const doc = new window.docx.Document({
+        sections: [{
+            properties: {},
+            children: [
+                new window.docx.Paragraph({
+                    text: "Leo's Reflection Console - Game Results",
+                    heading: window.docx.HeadingLevel.HEADING_1,
+                    alignment: window.docx.AlignmentType.CENTER
+                }),
+            ]
+        }]
+    });
+    window.docx.Packer.toBlob(doc).then(blob => {
+        const a = document.createElement('a');
+        a.href = window.URL.createObjectURL(blob);
+        a.download = `Leo_Reflections_${sessionDay}_${sessionGroup}_${individualName.replace(/\s+/g, '_')}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(a.href);
+        showSummaryModal();
+    }).catch(err => {
+        showBigModal({
+            emoji: '❌',
+            main: 'Export failed',
+            sub: 'There was an error generating your Word document. Please try again.',
+            okText: 'OK',
+            onOk: null
+        });
+    });
+} 
