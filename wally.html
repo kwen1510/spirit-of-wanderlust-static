@@ -10,10 +10,10 @@
         .prologue-box { background: #fff; border-radius: 18px; box-shadow: 0 2px 12px #0001; padding: 2em; margin-bottom: 2em; font-size: 1.15em; }
         .rounds-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.5em; margin-bottom: 2em; }
         .round-box, .round-message-box { background: #e0e0e0; border-radius: 14px; box-shadow: 0 1px 4px #0001; padding: 2em 0.5em; text-align: center; font-size: 1.3em; font-weight: 600; transition: background 0.2s, box-shadow 0.2s; border: 2px solid #e0e0e0; position: relative; min-height: 90px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; }
-        .round-box.completed { background: #d4f8e8; border-color: #27ae60; color: #222; }
-        .round-box.current { background: #fffbe6; border-color: #ffb300; color: #7c5a00; }
-        .round-box.locked { background: #f3f3f3; color: #aaa; cursor: not-allowed; }
-        .round-message-box { background: #fff; border: 2px solid #4a90e2; color: #333; font-size: 1.1em; font-weight: 400; cursor: default; word-wrap: break-word; overflow-wrap: break-word; }
+        .round-box.completed { background: #f0f0f0; border-color: #ccc; color: #222; }
+        .round-box.current { background: #f3f3f3; border-color: #ccc; color: #333; }
+        .round-box.locked { background: #f8f8f8; color: #aaa; cursor: not-allowed; }
+        .round-message-box { background: #fff; border: 2px solid #ccc; color: #333; font-size: 1.1em; font-weight: 400; cursor: default; word-wrap: break-word; overflow-wrap: break-word; }
         .round-message-box .reflection { margin-top: 0.7em; font-style: italic; color: #555; font-size: 1em; background: #f7f7f7; border-radius: 8px; padding: 0.5em 0.7em; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
         .modal-bg { 
             position: fixed; 
@@ -39,9 +39,8 @@
             border: none;
             animation: fadeIn 0.3s ease-out;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-15px); }
-            to { opacity: 1; transform: translateY(0); }
+        #session-modal .modal-content {
+            background: #f5fef5;
         }
         .modal-content h2 { 
             margin: 0 0 1.2em 0; 
@@ -57,7 +56,7 @@
             border: 1.5px solid #ddd; 
             width: 100%; 
             box-sizing: border-box;
-            background: #f8f8f8;
+            background: #fff;
             transition: all 0.2s ease;
         }
         .modal-content input:focus, .modal-content select:focus {
@@ -110,7 +109,7 @@
             margin-top: 1em; 
             margin-bottom: 1em; 
             box-sizing: border-box;
-            background: #f8f8f8;
+            background: #fff;
             transition: all 0.2s ease;
         }
         .modal-content textarea:focus {
@@ -229,6 +228,17 @@
             box-shadow: 0 1px 4px #0001;
             transform: translateY(0);
         }
+        .instructions-box {
+            max-width: 700px;
+            margin: 0 auto 2em auto;
+            padding: 1.2em 1.5em;
+            background: #f3f3f3;
+            border-radius: 14px;
+            border: 1.5px solid #ccc;
+            color: #333;
+            font-size: 1.13em;
+            text-align: center;
+        }
     </style>
     <script src="elder-chew-messages.js"></script>
     <script src="role-introductions.js"></script>
@@ -239,7 +249,7 @@
     <!-- Loading Modal for Session/Name Selection -->
     <div id="session-modal" class="modal-bg">
       <div class="modal-content">
-        <h2>Raffles Parable</h2>
+        <h2>Spirit of Wanderlust</h2>
         <label for="day-select">Day</label>
         <select id="day-select"></select>
         <label for="group-select">Group</label>
@@ -269,7 +279,7 @@ You have been stranded on an island. Your only hope to leave this island lies in
     </div>
     <div class="container" style="display:none;">
         <h1 style="text-align:center;">Wally's Reflection Console</h1>
-        <div style="max-width:700px;margin:0 auto 2em auto;padding:1.2em 1.5em;background:#fffbe6;border-radius:14px;border:1.5px solid #ffb300;color:#7c5a00;font-size:1.13em;text-align:center;">
+        <div class="instructions-box">
             <b>Instructions:</b> Click on each round box to open it. You can only open one new box per round. After submitting your reflection, the box will show Elder Chew's message and your answer.
         </div>
         <div class="prologue-box" id="prologue-box"></div>

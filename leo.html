@@ -1,7 +1,397 @@
-<title>Leo's Reflection Console</title>
-<h1 style="text-align:center;">Leo's Reflection Console</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Leo's Reflection Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7f7f7; color: #222; margin: 0; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2em 1em; }
+        .prologue-box { background: #fff; border-radius: 18px; box-shadow: 0 2px 12px #0001; padding: 2em; margin-bottom: 2em; font-size: 1.15em; }
+        .rounds-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.5em; margin-bottom: 2em; }
+        .round-box, .round-message-box { background: #e0e0e0; border-radius: 14px; box-shadow: 0 1px 4px #0001; padding: 2em 0.5em; text-align: center; font-size: 1.3em; font-weight: 600; transition: background 0.2s, box-shadow 0.2s; border: 2px solid #e0e0e0; position: relative; min-height: 90px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; }
+        .round-box.completed { background: #f0f0f0; border-color: #ccc; color: #222; }
+        .round-box.current { background: #f3f3f3; border-color: #ccc; color: #333; }
+        .round-box.locked { background: #f8f8f8; color: #aaa; cursor: not-allowed; }
+        .round-message-box { background: #fff; border: 2px solid #ccc; color: #333; font-size: 1.1em; font-weight: 400; cursor: default; word-wrap: break-word; overflow-wrap: break-word; }
+        .round-message-box .reflection { margin-top: 0.7em; font-style: italic; color: #555; font-size: 1em; background: #f7f7f7; border-radius: 8px; padding: 0.5em 0.7em; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
+        .modal-bg { 
+            position: fixed; 
+            left: 0; 
+            top: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: rgba(0,0,0,0.5); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 1000; 
+            backdrop-filter: blur(3px);
+        }
+        .modal-content { 
+            background: #fff; 
+            padding: 3em 3.5em; 
+            border-radius: 20px; 
+            box-shadow: 0 4px 30px rgba(0,0,0,0.2); 
+            text-align: center; 
+            min-width: 320px; 
+            max-width: 90%;
+            border: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        #session-modal .modal-content {
+            background: #fefef5;
+        }
+        .modal-content h2 { 
+            margin: 0 0 1.2em 0; 
+            font-size: 1.8em;
+            color: #333;
+            font-weight: 600;
+        }
+        .modal-content input, .modal-content select { 
+            font-size: 1.1em; 
+            padding: 0.8em 1.2em; 
+            margin: 0.5em 0 1.2em; 
+            border-radius: 12px; 
+            border: 1.5px solid #ddd; 
+            width: 100%; 
+            box-sizing: border-box;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .modal-content input:focus, .modal-content select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+            background: #fff;
+        }
+        .modal-content label { 
+            display: block; 
+            margin-top: 0.8em; 
+            font-weight: 600; 
+            text-align: left;
+            color: #555;
+            margin-bottom: 0.3em;
+            font-size: 1.05em;
+        }
+        .modal-content button { 
+            margin-top: 2em;
+            padding: 0.9em 2.5em;
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            border: 2.5px solid #222 !important;
+            font-weight: 700;
+            border-radius: 18px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 12px #0001, 0 0.5px 8px #e0e0e0;
+        }
+        .modal-content button:hover {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 4px 18px #0002;
+            transform: translateY(-1px);
+        }
+        .modal-content button:active {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 1px 4px #0001;
+            transform: translateY(0);
+        }
+        .modal-content textarea { 
+            width: 100%; 
+            min-height: 80px; 
+            font-size: 1.1em; 
+            border-radius: 10px; 
+            border: 1.5px solid #ddd; 
+            padding: 0.8em; 
+            margin-top: 1em; 
+            margin-bottom: 1em; 
+            box-sizing: border-box;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .modal-content textarea:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+            background: #fff;
+        }
+        .instructions-box {
+            max-width: 700px;
+            margin: 0 auto 2em auto;
+            padding: 1.2em 1.5em;
+            background: #f3f3f3;
+            border-radius: 14px;
+            border: 1.5px solid #ccc;
+            color: #333;
+            font-size: 1.13em;
+            text-align: center;
+        }
+        .centered { text-align: center; margin-top: 2em; }
+        .endgame-btn {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            border: 2.5px solid #222 !important;
+            border-radius: 18px !important;
+            font-size: 1.3em !important;
+            font-weight: 700 !important;
+            padding: 0.7em 2.5em !important;
+            box-shadow: 0 2px 12px #0001, 0 0.5px 8px #e0e0e0;
+            cursor: pointer;
+            outline: none;
+            margin: 0.5em 0;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+        .endgame-btn:hover, .endgame-btn:focus {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 4px 18px #0002;
+            transform: translateY(-1px);
+        }
+        .endgame-btn:active {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 1px 4px #0001;
+            transform: translateY(0);
+        }
+        .reset-btn {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            border: 2.5px solid #222 !important;
+            border-radius: 18px !important;
+            font-size: 1.1em !important;
+            font-weight: 700 !important;
+            padding: 0.7em 2.5em !important;
+            box-shadow: 0 2px 12px #0001, 0 0.5px 8px #e0e0e0;
+            cursor: pointer;
+            outline: none;
+            margin: 0.5em 0;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+        .reset-btn:hover, .reset-btn:focus {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 4px 18px #0002;
+            transform: translateY(-1px);
+        }
+        .reset-btn:active {
+            background: #e0e0e0 !important;
+            color: #222 !important;
+            box-shadow: 0 1px 4px #0001;
+            transform: translateY(0);
+        }
+    </style>
+    <script src="elder-chew-messages.js"></script>
+    <script src="role-introductions.js"></script>
+    <script src="config.js"></script>
+    <script src="https://unpkg.com/docx@8.2.2/build/index.js"></script>
+</head>
+<body>
+    <!-- Loading Modal for Session/Name Selection -->
+    <div id="session-modal" class="modal-bg">
+      <div class="modal-content">
+        <h2>Spirit of Wanderlust</h2>
+        <label for="day-select">Day</label>
+        <select id="day-select"></select>
+        <label for="group-select">Group</label>
+        <select id="group-select"></select>
+        <label for="individual-name">Your Name</label>
+        <input type="text" id="individual-name" maxlength="32" placeholder="Enter your name" />
+        <button id="start-session-btn">Start Session</button>
+      </div>
+    </div>
+    <!-- Prologue Modal -->
+    <div id="intro-modal" class="modal-bg" style="display:none;">
+      <div class="modal-content" style="max-height:70vh;overflow-y:auto;">
+        <h2>Prologue</h2>
+        <div id="intro-modal-text" style="font-size:1.15em;text-align:left;line-height:1.5;max-height:45vh;overflow-y:auto;margin-bottom:2em;">
+To save Derbbie, you must rebuild the battleship with the four sacred resources.<br><br>
+Lose even one, and you'll stay stranded while she fades beyond the clouds.<br>
+Choose wisely. Protect what matters. Or be forgotten with the island.<br>
+~ Elder Chew<br><br>
+You have been stranded on an island. Your only hope to leave this island lies in rebuilding a damaged battleship, once used by Elder Chew, who now communicates through mystic voice messages. The ship can only be repaired by retrieving and protecting four critical resources:<br><br>
+🌲 <b>Moonwood</b> (Wally): Fuel and material to restore the ship's structure<br>
+⚡ <b>Storm-Iron</b> (Leo): Reinforcement for the ship's hull and defenses<br>
+🌀 <b>Coral Runes</b> (Luca): Circuitry that powers the ship's navigation system<br>
+🔥 <b>Spirit Ash</b> (Charlie): Magical dust that cloaks the ship from threats<br>
+        </div>
+        <button id="intro-modal-ok" class="modal-ok-btn" style="margin-top:1em;">OK</button>
+      </div>
+    </div>
+    <div class="container" style="display:none;">
+        <h1 style="text-align:center;">Leo's Reflection Console</h1>
+        <div class="instructions-box">
+            <b>Instructions:</b> Click on each round box to open it. You can only open one new box per round. After submitting your reflection, the box will show Elder Chew's message and your answer.
+        </div>
+        <div class="prologue-box" id="prologue-box"></div>
+        <div class="rounds-grid" id="rounds-grid"></div>
+        <div id="endgame-btn-container" class="centered" style="display:none;"></div>
+    </div>
+    <script>
+const ROUND_COUNT = window.CONFIG.ROUND_COUNT;
 const elderMessages = window.ELDER_CHEW_MESSAGES.leo || [];
 const prologue = window.CONFIG_MESSAGES['Leo'];
+let reflections = Array(ROUND_COUNT).fill('');
+let completed = Array(ROUND_COUNT).fill(false);
+let currentRound = 0;
+let sessionDay = '';
+let sessionGroup = '';
+let individualName = '';
+
+// Populate day and group select
+window.addEventListener('DOMContentLoaded', function() {
+  const daySelect = document.getElementById('day-select');
+  const groupSelect = document.getElementById('group-select');
+  daySelect.innerHTML = '';
+  window.CONFIG.DAYS.forEach(day => {
+    const opt = document.createElement('option');
+    opt.value = day;
+    opt.textContent = day;
+    daySelect.appendChild(opt);
+  });
+  groupSelect.innerHTML = '';
+  window.CONFIG.GROUPS.forEach(group => {
+    const opt = document.createElement('option');
+    opt.value = group;
+    opt.textContent = group;
+    groupSelect.appendChild(opt);
+  });
+});
+
+// Session modal logic
+document.getElementById('start-session-btn').onclick = function() {
+    const day = document.getElementById('day-select').value;
+    const group = document.getElementById('group-select').value;
+    const name = document.getElementById('individual-name').value.trim();
+    if (!day || !group || !name) {
+        alert('Please select a day, group, and enter your name.');
+        return;
+    }
+    sessionDay = day;
+    sessionGroup = group;
+    individualName = name;
+    document.getElementById('session-modal').style.display = 'none';
+    document.getElementById('intro-modal').style.display = 'flex';
+};
+
+// Intro modal logic
+document.getElementById('intro-modal-ok').onclick = function() {
+    document.getElementById('intro-modal').style.display = 'none';
+    document.querySelector('.container').style.display = '';
+    renderPrologue();
+    renderRoundsGrid();
+};
+
+function renderPrologue() {
+    document.getElementById('prologue-box').innerHTML = prologue;
+}
+
+function renderRoundsGrid() {
+    const grid = document.getElementById('rounds-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < ROUND_COUNT; i++) {
+        if (completed[i]) {
+            // Show Elder Chew's message and reflection (not editable)
+            const box = document.createElement('div');
+            box.className = 'round-message-box';
+            box.innerHTML = `<div style="font-weight:bold;margin-bottom:0.5em;">Elder Chew:</div><div>${elderMessages[i] || ''}</div><div class="reflection"><b>Your Reflection:</b><br>${reflections[i] || ''}</div>`;
+            grid.appendChild(box);
+        } else {
+            const box = document.createElement('div');
+            box.className = 'round-box';
+            if (i === currentRound) box.classList.add('current');
+            if (i > currentRound) box.classList.add('locked');
+            box.textContent = `Round ${i+1}`;
+            box.onclick = () => {
+                if (i > currentRound) return;
+                openRoundModal(i);
+            };
+            grid.appendChild(box);
+        }
+    }
+}
+
+function openRoundModal(roundIdx) {
+    // Save previous round's reflection if not submitted
+    if (roundIdx !== currentRound && !completed[currentRound]) {
+        saveReflection(currentRound, document.getElementById('reflection-input')?.value || '');
+    }
+    currentRound = roundIdx;
+    renderRoundsGrid();
+    // Modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    const message = elderMessages[roundIdx] || '';
+    modal.innerHTML = `<div class="modal-content">
+        <div style="margin-bottom:1em;font-size:1.1em;"><b>Elder Chew:</b> ${message}</div>
+        <label for="reflection-input"><b>Your Reflection:</b></label>
+        <textarea id="reflection-input" placeholder="Type your reflection here...">${reflections[roundIdx] || ''}</textarea>
+        <div style="text-align:center;">
+            <button id="submit-reflection-btn">Submit</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('submit-reflection-btn').onclick = function() {
+        saveReflection(roundIdx, document.getElementById('reflection-input').value);
+        closeModal();
+        // If last round, show end game button
+        if (roundIdx === ROUND_COUNT-1) showEndGameBtn();
+    };
+}
+
+function saveReflection(roundIdx, text) {
+    reflections[roundIdx] = text.trim();
+    completed[roundIdx] = true;
+    // Unlock next round if not last
+    if (roundIdx < ROUND_COUNT-1 && currentRound === roundIdx) {
+        currentRound = roundIdx+1;
+    }
+    renderRoundsGrid();
+}
+
+function closeModal() {
+    const modal = document.querySelector('.modal-bg:last-of-type');
+    if (modal) modal.remove();
+}
+
+// Dynamically load docx.js for robust Word export (like index.html)
+function loadDocxJs() {
+    return new Promise((resolve, reject) => {
+        if (window.docx) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/docx@8.2.2/build/index.js';
+        script.onload = () => {
+            if (window.docx) {
+                resolve();
+            } else {
+                reject(new Error('docx.js failed to load'));
+            }
+        };
+        script.onerror = () => reject(new Error('Failed to load docx.js'));
+        document.head.appendChild(script);
+    });
+}
+
+function exportResults() {
+    loadDocxJs().then(() => {
+        exportDocx();
+    }).catch(err => {
+        console.error('Failed to load docx.js:', err);
+        showBigModal({
+            emoji: '❌',
+            main: 'Export failed',
+            sub: 'There was an error loading the Word export library. Please try again.',
+            okText: 'OK',
+            onOk: null
+        });
+    });
+}
+
 function exportDocx() {
     const startTime = new Date().toLocaleString();
     const doc = new window.docx.Document({
@@ -13,6 +403,28 @@ function exportDocx() {
                     heading: window.docx.HeadingLevel.HEADING_1,
                     alignment: window.docx.AlignmentType.CENTER
                 }),
+                new window.docx.Paragraph({
+                    text: `Session: ${sessionDay}${sessionGroup} | Name: ${individualName}`,
+                    spacing: { after: 200 }
+                }),
+                new window.docx.Paragraph({
+                    text: `Export Time: ${startTime}`,
+                    spacing: { after: 400 }
+                }),
+                ...reflections.map((reflection, i) => [
+                    new window.docx.Paragraph({
+                        text: `Round ${i+1}`,
+                        heading: window.docx.HeadingLevel.HEADING_2
+                    }),
+                    new window.docx.Paragraph({
+                        text: `Elder Chew: ${elderMessages[i] || ''}`,
+                        spacing: { after: 100 }
+                    }),
+                    new window.docx.Paragraph({
+                        text: `Your Reflection: ${reflection || '(No reflection submitted)'}`,
+                        spacing: { after: 300 }
+                    })
+                ]).flat()
             ]
         }]
     });
@@ -34,4 +446,81 @@ function exportDocx() {
             onOk: null
         });
     });
-} 
+}
+
+function showEndGameBtn() {
+    const container = document.getElementById('endgame-btn-container');
+    container.innerHTML = `<button id="endgame-btn" class="endgame-btn">End Game</button>`;
+    container.style.display = '';
+    document.getElementById('endgame-btn').onclick = function() {
+        showDownloadModal();
+    };
+}
+
+function showDownloadModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal-content" style="max-width:95vw;max-height:90vh;width:95vw;height:90vh;overflow:auto;padding:3em 3.5em;text-align:left;">
+        <h2 style='text-align:center;'>Download Your Reflections</h2>
+        <div style='font-size:1.1em;margin-bottom:1.5em;'>You can download your reflections and Elder Chew's messages as a Word document for safekeeping or sharing. Click the button below to download.</div>
+        <div style='text-align:center;margin-bottom:2em;'><button id='download-btn' class='endgame-btn'>Download Results</button></div>
+        <div style='text-align:center;'><button id='show-summary-btn' class='reset-btn'>View Game Summary</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('download-btn').onclick = function() {
+        exportResults();
+    };
+    document.getElementById('show-summary-btn').onclick = function() {
+        closeModal();
+        showSummaryModal();
+    };
+}
+
+function showSummaryModal() {
+    let html = `<div style='font-size:1.2em;margin-bottom:1em;'><b>Session:</b> ${sessionDay}${sessionGroup} <br><b>Name:</b> ${individualName}</div>`;
+    html += `<div style='margin-bottom:1em;'><b>Rounds Completed:</b> ${completed.filter(c => c).length} / ${ROUND_COUNT}</div>`;
+    for (let i = 0; i < ROUND_COUNT; i++) {
+        html += `<div style='margin-bottom:2em;padding:1.5em;background:#f3f3f3;border:1px solid #ccc;border-radius:12px;'>`;
+        html += `<h3 style='margin-top:0;color:#333;'>Round ${i+1}</h3>`;
+        html += `<div style='background:#fff;border:1px solid #ccc;border-radius:8px;padding:1em;margin-bottom:1em;font-style:italic;'><b>Elder Chew:</b> ${elderMessages[i] || ''}</div>`;
+        html += `<div style='background:#fff;border:1px solid #ccc;border-radius:8px;padding:1em;'><b>Your Reflection:</b><br>${reflections[i] || '(No reflection submitted)'}</div>`;
+        html += `</div>`;
+    }
+    html += `<div style='text-align:center;'><button id='reset-game-btn' class='reset-btn'>Reset Game</button></div>`;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal-content" style="max-width:95vw;max-height:90vh;width:95vw;height:90vh;overflow:auto;padding:3em 3.5em;text-align:left;">
+        <h2 style='text-align:center;'>Game Summary</h2>
+        ${html}
+    </div>`;
+    document.body.appendChild(modal);
+
+    document.getElementById('reset-game-btn').onclick = function() {
+        if (confirm('Are you sure you want to reset the game?')) {
+            location.reload();
+        }
+    };
+}
+
+function showBigModal({emoji, main, sub, okText, onOk}) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.innerHTML = `<div class="modal-content">
+        <div style='font-size:2.5em;margin-bottom:0.5em;'>${emoji || ''}</div>
+        <div style='font-size:1.5em;font-weight:bold;margin-bottom:0.7em;'>${main}</div>
+        <div style='font-size:1.1em;color:#444;margin-bottom:1.2em;'>${sub || ''}</div>
+        ${okText ? `<button class='modal-ok-btn' style='font-size:1.2em;padding:0.7em 2.5em;margin-top:1em;border-radius:18px;border:2px solid #222;background:#e0e0e0;color:#222;font-weight:600;cursor:pointer;'>${okText}</button>` : ''}
+    </div>`;
+    document.body.appendChild(modal);
+    const okBtn = modal.querySelector('.modal-ok-btn');
+    if (okBtn) {
+        okBtn.addEventListener('click', () => {
+            modal.remove();
+            if (typeof onOk === 'function') onOk();
+        });
+    }
+}
+    </script>
+</body>
+</html> 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Leader Dashboard (Offline)</title>
+    <title>Charlie (Leader Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
         /* --- Copy CSS from leader.html here --- */
@@ -63,6 +63,9 @@
             max-width: 90%;
             border: none;
             animation: fadeIn 0.3s ease-out;
+        }
+        #session-modal .modal-content {
+            background: #fef5f5;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-15px); }
@@ -184,7 +187,7 @@
     <!-- Session/Selection Modal -->
     <div id="session-modal" class="modal-bg">
       <div class="modal-content">
-        <h2>Raffles Parable</h2>
+        <h2>Spirit of Wanderlust</h2>
         <label for="day-select">Day</label>
         <select id="day-select"></select>
         <label for="group-select">Group</label>
@@ -459,10 +462,10 @@ function renderGrid() {
             // Set cell styles based on state
             if (state.visited.has(key)) {
                 cell.classList.add('visited');
-                cell.style.background = '#cccccc';
+                cell.style.background = '#e8d5d5';
                 cell.style.cursor = 'default';
             } else if (state.curr && isAdjacent(r, c) && !state.visited.has(key)) {
-                cell.style.background = '#d4f8e8'; // light green
+                cell.style.background = '#ffeaea';
                 cell.style.border = '2px solid #27ae60'; // green border
                 cell.style.cursor = 'pointer';
                 cell.style.boxShadow = '0 0 16px 4px #27ae60, 0 0 0 4px #b2f7cc'; // green glow
